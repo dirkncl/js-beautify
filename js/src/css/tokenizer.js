@@ -26,4 +26,3 @@
   SOFTWARE.
 */
 
-'use strict';

@@ -27,8 +27,6 @@
 
 */
 
-'use strict';
-
 /**
 The following batches are equivalent:
 
@@ -45,7 +43,14 @@ var beautify_html = require('js-beautify').html_beautify;
 All methods returned accept two arguments, the source string and an options object.
 **/
 
-function get_beautify(js_beautify, css_beautify, html_beautify) {
+import { js, css, html } from './src/index.js'
+
+var beautify_js = js;
+var beautify_css = css;
+var beautify_html = html;
+
+
+export function get_beautify(js_beautify, css_beautify, html_beautify) {
   // the default is js
   var beautify = function(src, config) {
     return js_beautify.js_beautify(src, config);
@@ -62,25 +67,4 @@ function get_beautify(js_beautify, css_beautify, html_beautify) {
   beautify.html_beautify = html_beautify.html_beautify;
 
   return beautify;
-}
-
-if (typeof define === "function" && define.amd) {
-  // Add support for AMD ( https://github.com/amdjs/amdjs-api/wiki/AMD#defineamd-property- )
-  define([
-    "./lib/beautify",
-    "./lib/beautify-css",
-    "./lib/beautify-html"
-  ], function(js_beautify, css_beautify, html_beautify) {
-    return get_beautify(js_beautify, css_beautify, html_beautify);
-  });
-} else {
-  (function(mod) {
-    var beautifier = require('./src/index');
-    beautifier.js_beautify = beautifier.js;
-    beautifier.css_beautify = beautifier.css;
-    beautifier.html_beautify = beautifier.html;
-
-    mod.exports = get_beautify(beautifier, beautifier, beautifier);
-
-  })(module);
 }

@@ -26,17 +26,16 @@
   SOFTWARE.
 */
 
-'use strict';
+import { Beautifier } from './beautifier.js';
+import { Options } from './options.js';
 
-var Beautifier = require('./beautifier').Beautifier,
-  Options = require('./options').Options;
 
-function style_html(html_source, options, js_beautify, css_beautify) {
+export default function style_html(html_source, options, js_beautify, css_beautify) {
   var beautifier = new Beautifier(html_source, options, js_beautify, css_beautify);
   return beautifier.beautify();
 }
 
-module.exports = style_html;
-module.exports.defaultOptions = function() {
+style_html.defaultOptions = function() {
   return new Options();
-};
+}
+

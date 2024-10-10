@@ -10,55 +10,62 @@
 // output_somewhere(t.results()); // good for <pre>, html safe-ish
 // alert(t.results_raw());        // html unescaped
 
-function SanityTest(func, name_of_test) {
-  'use strict';
-
-  var test_func = func || function(x) {
-    return x;
-  };
-
-  var test_name = name_of_test || '';
-
-  var n_failed = 0;
-  var n_succeeded = 0;
-
-  var failures = [];
-
-  this.test_function = function(func, name) {
-    test_func = func;
-    test_name = name || '';
-  };
-
-  this.get_exitcode = function() {
-    return n_succeeded === 0 || n_failed !== 0 ? 1 : 0;
-  };
-
-  this.expect = function(parameters, expected_value) {
+export default class SanityTest {
+  test_func;
+  test_name;
+  n_failed;
+  n_succeeded;
+  failures;
+  
+  constructor(func, name_of_test) {
+    
+    this.test_func = func || function(x) {
+      return x;
+    };
+  
+    this.test_name = name_of_test || '';
+  
+    this.n_failed = 0;
+    this.n_succeeded = 0;
+  
+    this.failures = [];
+  }
+  
+  test_function(func, name) {
+    this.test_func = func;
+    this.test_name = name || '';
+  }
+  
+  get_exitcode() {
+    return this.n_succeeded === 0 || this.n_failed !== 0 ? 1 : 0;
+  }
+  
+  expect(parameters, expected_value) {
     // multi-parameter calls not supported (I don't need them now).
-    var result = test_func(parameters);
+    var result = this.test_func(parameters);
     // proper array checking is a pain. i'll maybe do it later, compare strings representations instead
     if ((result === expected_value) || (expected_value instanceof Array && result.join(', ') === expected_value.join(', '))) {
-      n_succeeded += 1;
+      this.n_succeeded += 1;
       return true;
     } else {
-      n_failed += 1;
-      failures.push([test_name, parameters, expected_value, result]);
+      this.n_failed += 1;
+      this.failures.push([this.test_name, parameters, expected_value, result]);
       return false;
     }
-  };
-
-
-  this.results_raw = function() {
+  }
+  
+  
+  results_raw() {
     var results = '';
-    if (n_failed === 0) {
-      if (n_succeeded === 0) {
+    if (this.n_failed === 0) {
+      if (this.n_succeeded === 0) {
         results = 'No tests run.';
       } else {
-        results = 'All ' + n_succeeded + ' tests passed.';
+        results = 'All ' + this.n_succeeded + ' tests passed.';
       }
     } else {
-      for (var i = 0; i < failures.length; i++) {
-        var f = failures[i];
+      for (var i = 0; i < this.failures.length; i++) {
+        var f = this.failures[i];
         if (f[0]) {
           f[0] = f[0] + ' ';
         }
@@ -70,26 +77,25 @@ function SanityTest(func, name_of_test) {
         results += '---- output-ws ------\n' + this.prettyprint_whitespace(f[3]) + '\n';
         results += '================================================================\n\n';
       }
-      results += n_failed + ' tests failed.\n';
+      results += this.n_failed + ' tests failed.\n';
     }
     return results;
-  };
-
-
-  this.results = function() {
+  }
+ 
+  results() {
     return this.lazy_escape(this.results_raw());
-  };
-
-  this.prettyprint_whitespace = function(something, quote_strings) {
+  }
+  
+  prettyprint_whitespace(something, quote_strings) {
     return (this.prettyprint(something, quote_strings)
       .replace(/\r\n/g, '\\r\n')
       .replace(/\n/g, '\\n\n')
       .replace(/\r/g, '\\r\n')
       .replace(/ /g, '_')
       .replace(/\t/g, '===|'));
-  };
-
-  this.prettyprint = function(something, quote_strings) {
+  }
+  
+  prettyprint(something, quote_strings) {
     var type = typeof something;
     switch (type.toLowerCase()) {
       case 'string':
@@ -121,15 +127,15 @@ function SanityTest(func, name_of_test) {
       default:
         return type + ': ' + something;
     }
-  };
-
-
-  this.lazy_escape = function(str) {
+  }
+  
+  
+  lazy_escape(str) {
     return str.replace(/</g, '&lt;').replace(/\>/g, '&gt;').replace(/\n/g, '<br />');
-  };
-
-
-  this.log = function() {
+  }
+  
+  
+  log() {
     if (window.console) {
       if (console.firebug) {
         console.log.apply(console, Array.prototype.slice.call(arguments));
@@ -137,10 +143,7 @@ function SanityTest(func, name_of_test) {
         console.log.call(console, Array.prototype.slice.call(arguments));
       }
     }
-  };
-
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = SanityTest;
+  }
+  
+  
 }

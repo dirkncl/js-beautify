@@ -26,11 +26,10 @@
   SOFTWARE.
 */
 
-'use strict';
 
-var js_beautify = require('./javascript/index');
-var css_beautify = require('./css/index');
-var html_beautify = require('./html/index');
+import js_beautify from './javascript/index.js';
+import css_beautify from './css/index.js';
+import html_beautify from './html/index.js';
 
 function style_html(html_source, options, js, css) {
   js = js || js_beautify;
@@ -39,6 +38,4 @@ function style_html(html_source, options, js, css) {
 }
 style_html.defaultOptions = html_beautify.defaultOptions;
 
-module.exports.js = js_beautify;
-module.exports.css = css_beautify;
-module.exports.html = style_html;
+export { js_beautify as js, css_beautify as css, style_html as html }

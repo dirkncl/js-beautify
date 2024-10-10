@@ -26,80 +26,77 @@
   SOFTWARE.
 */
 
-'use strict';
+import { Pattern } from '../core/pattern.js';
 
-var Pattern = require('../core/pattern').Pattern;
-
-function WhitespacePattern(input_scanner, parent) {
-  Pattern.call(this, input_scanner, parent);
-  if (parent) {
-    this._line_regexp = this._input.get_regexp(parent._line_regexp);
-  } else {
-    this.__set_whitespace_patterns('', '');
+export class WhitespacePattern extends Pattern {
+  constructor(input_scanner, parent) {
+    super(input_scanner, parent);
+    if (parent) {
+      this._line_regexp = this._input.get_regexp(parent._line_regexp);
+    } else {
+      this.__set_whitespace_patterns('', '');
+    }
+  
+    this.newline_count = 0;
+    this.whitespace_before_token = '';
   }
-
-  this.newline_count = 0;
-  this.whitespace_before_token = '';
+  
+  __set_whitespace_patterns(whitespace_chars, newline_chars) {
+    whitespace_chars += '\\t ';
+    newline_chars += '\\n\\r';
+  
+    this._match_pattern = this._input.get_regexp(
+      '[' + whitespace_chars + newline_chars + ']+', true);
+    this._newline_regexp = this._input.get_regexp(
+      '\\r\\n|[' + newline_chars + ']');
+  }
+  
+  read() {
+    this.newline_count = 0;
+    this.whitespace_before_token = '';
+  
+    var resulting_string = this._input.read(this._match_pattern);
+    if (resulting_string === ' ') {
+      this.whitespace_before_token = ' ';
+    } else if (resulting_string) {
+      var matches = this.__split(this._newline_regexp, resulting_string);
+      this.newline_count = matches.length - 1;
+      this.whitespace_before_token = matches[this.newline_count];
+    }
+  
+    return resulting_string;
+  }
+  
+  matching(whitespace_chars, newline_chars) {
+    var result = this._create();
+    result.__set_whitespace_patterns(whitespace_chars, newline_chars);
+    result._update();
+    return result;
+  }
+  
+  _create() {
+    return new WhitespacePattern(this._input, this);
+  }
+  
+  __split(regexp, input_string) {
+    regexp.lastIndex = 0;
+    var start_index = 0;
+    var result = [];
+    var next_match = regexp.exec(input_string);
+    while (next_match) {
+      result.push(input_string.substring(start_index, next_match.index));
+      start_index = next_match.index + next_match[0].length;
+      next_match = regexp.exec(input_string);
+    }
+  
+    if (start_index < input_string.length) {
+      result.push(input_string.substring(start_index, input_string.length));
+    } else {
+      result.push('');
+    }
+  
+    return result;
+  }
 }
-WhitespacePattern.prototype = new Pattern();
-
-WhitespacePattern.prototype.__set_whitespace_patterns = function(whitespace_chars, newline_chars) {
-  whitespace_chars += '\\t ';
-  newline_chars += '\\n\\r';
-
-  this._match_pattern = this._input.get_regexp(
-    '[' + whitespace_chars + newline_chars + ']+', true);
-  this._newline_regexp = this._input.get_regexp(
-    '\\r\\n|[' + newline_chars + ']');
-};
-
-WhitespacePattern.prototype.read = function() {
-  this.newline_count = 0;
-  this.whitespace_before_token = '';
-
-  var resulting_string = this._input.read(this._match_pattern);
-  if (resulting_string === ' ') {
-    this.whitespace_before_token = ' ';
-  } else if (resulting_string) {
-    var matches = this.__split(this._newline_regexp, resulting_string);
-    this.newline_count = matches.length - 1;
-    this.whitespace_before_token = matches[this.newline_count];
-  }
-
-  return resulting_string;
-};
-
-WhitespacePattern.prototype.matching = function(whitespace_chars, newline_chars) {
-  var result = this._create();
-  result.__set_whitespace_patterns(whitespace_chars, newline_chars);
-  result._update();
-  return result;
-};
-
-WhitespacePattern.prototype._create = function() {
-  return new WhitespacePattern(this._input, this);
-};
-
-WhitespacePattern.prototype.__split = function(regexp, input_string) {
-  regexp.lastIndex = 0;
-  var start_index = 0;
-  var result = [];
-  var next_match = regexp.exec(input_string);
-  while (next_match) {
-    result.push(input_string.substring(start_index, next_match.index));
-    start_index = next_match.index + next_match[0].length;
-    next_match = regexp.exec(input_string);
-  }
-
-  if (start_index < input_string.length) {
-    result.push(input_string.substring(start_index, input_string.length));
-  } else {
-    result.push('');
-  }
-
-  return result;
-};
 
 
-
-module.exports.WhitespacePattern = WhitespacePattern;

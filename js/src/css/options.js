@@ -26,31 +26,26 @@
   SOFTWARE.
 */
 
-'use strict';
+import { Options as BaseOptions } from '../core/options.js';
 
-var BaseOptions = require('../core/options').Options;
-
-function Options(options) {
-  BaseOptions.call(this, options, 'css');
-
-  this.selector_separator_newline = this._get_boolean('selector_separator_newline', true);
-  this.newline_between_rules = this._get_boolean('newline_between_rules', true);
-  var space_around_selector_separator = this._get_boolean('space_around_selector_separator');
-  this.space_around_combinator = this._get_boolean('space_around_combinator') || space_around_selector_separator;
-
-  var brace_style_split = this._get_selection_list('brace_style', ['collapse', 'expand', 'end-expand', 'none', 'preserve-inline']);
-  this.brace_style = 'collapse';
-  for (var bs = 0; bs < brace_style_split.length; bs++) {
-    if (brace_style_split[bs] !== 'expand') {
-      // default to collapse, as only collapse|expand is implemented for now
-      this.brace_style = 'collapse';
-    } else {
-      this.brace_style = brace_style_split[bs];
+export class Options extends BaseOptions {
+  constructor(options) {
+    super(options, 'css');
+  
+    this.selector_separator_newline = this._get_boolean('selector_separator_newline', true);
+    this.newline_between_rules = this._get_boolean('newline_between_rules', true);
+    var space_around_selector_separator = this._get_boolean('space_around_selector_separator');
+    this.space_around_combinator = this._get_boolean('space_around_combinator') || space_around_selector_separator;
+  
+    var brace_style_split = this._get_selection_list('brace_style', ['collapse', 'expand', 'end-expand', 'none', 'preserve-inline']);
+    this.brace_style = 'collapse';
+    for (var bs = 0; bs < brace_style_split.length; bs++) {
+      if (brace_style_split[bs] !== 'expand') {
+        // default to collapse, as only collapse|expand is implemented for now
+        this.brace_style = 'collapse';
+      } else {
+        this.brace_style = brace_style_split[bs];
+      }
     }
   }
 }
-Options.prototype = new BaseOptions();
-
-
-
-module.exports.Options = Options;
