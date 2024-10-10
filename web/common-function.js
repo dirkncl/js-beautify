@@ -1,34 +1,71 @@
 /*jshint strict:false, node:false */
 /*exported run_tests, read_settings_from_cookie, beautify, submitIssue, copyText, selectAll, clearAll, changeToFileContent, setPreferredColorScheme*/
-var the = {
+import CodeMirror from '../libs/codemirror.js'
+globalThis.CodeMirror = CodeMirror
+
+import Cookies from '../libs/js.cookie.js'
+import { JavascriptObfuscator, Packer as P_A_C_K_E_R, Urlencoded, MyObfuscate, } from '../js/src/unpacker.js'
+import * as beautifier from '../js/src/index.js'
+import SanityTest from '../js/test/sanitytest.js'
+import SanitizeTest from '../js/test/sanitytest.js'
+import { run_javascript_tests } from '../js/test/generated/beautify-javascript-tests.js'
+import { run_css_tests } from '../js/test/generated/beautify-css-tests.js'
+import { run_html_tests } from '../js/test/generated/beautify-html-tests.js'
+
+import darcula_css from '../libs/codemirror/6.65.7/theme/darcula.css' with {type: 'css'}
+import dialog_css from '../libs/codemirror/6.65.7/addon/dialog/dialog.css' with {type: 'css'}
+import common_style_css from './common-style.css' with {type:'css'}
+globalThis.document.adoptedStyleSheets.push(darcula_css, dialog_css, common_style_css);
+
+export function getElm(attr, name){
+  var all = document.getElementsByTagName('*')
+  var result = []
+  for(var tag of all) {
+    if(tag.getAttribute(attr) === name) {
+      result.push(tag)
+    }
+  }
+  if(result.length>1) return result
+  return result[0]
+}
+
+var document = window.document
+
+function getId(id){
+  return getElm('id', id)
+}
+
+export var the = {
   use_codemirror: !window.location.href.match(/without-codemirror/),
-  beautifier_file: window.location.href.match(/debug/) ? 'beautifier' : './beautifier.min',
+  beautifier_file: window.location.href.match(/debug/) ? beautifier : beautifier,
   beautifier: null,
   beautify_in_progress: false,
   editor: null // codemirror editor
 };
 
-requirejs.config({
-  //By default load any module IDs from js/lib
-  baseUrl: 'js/lib',
-  paths: {
-    'beautifier': the.beautifier_file
-  }
-});
+var turn_off_codemirror = document.getElementsByClassName('turn-off-codemirror')[0]
+if(window.location.href.match(/without-codemirror/)) {
+  turn_off_codemirror.href = 'index.html'
+  turn_off_codemirror.innerHTML = 'Use Codemirror for code input?'
+} else {
+  turn_off_codemirror.href = 'index.html?without-codemirror'
+  turn_off_codemirror.innerHTML = 'Use a simple textarea for code input?'
 
-requirejs(['beautifier'],
-  function(beautifier) {
-    the.beautifier = beautifier;
-  });
+}
+
+function set(beauty) {
+  the.beautifier = beauty;
+}
+set(beautifier)
 
 
 function any(a, b) {
   return a || b;
 }
 
-function set_editor_mode() {
+export function set_editor_mode() {
   if (the.editor) {
-    var language = $('#language').val();
+    var language = getId('language').value;
     var mode = 'javascript';
     if (language === 'js') {
       mode = 'javascript';
@@ -42,11 +79,9 @@ function set_editor_mode() {
 }
 
 function run_tests() {
-  $.when($.getScript("js/test/sanitytest.js"),
-      $.getScript("js/test/generated/beautify-javascript-tests.js"),
-      $.getScript("js/test/generated/beautify-css-tests.js"),
-      $.getScript("js/test/generated/beautify-html-tests.js"))
-    .done(function() {
+  Promise.all([
+      SanitizeTest, run_javascript_tests, run_css_tests, run_html_tests
+    ]).then(function() {
       var st = new SanityTest();
       run_javascript_tests(st, Urlencoded, the.beautifier.js, the.beautifier.html, the.beautifier.css);
       run_css_tests(st, Urlencoded, the.beautifier.js, the.beautifier.html, the.beautifier.css);
@@ -62,55 +97,61 @@ function run_tests() {
         .replace(/ /g, '&nbsp;')
         .replace(/\r/g, '·')
         .replace(/\n/g, '<br>');
-      $('#testresults').html(results).show();
-    });
+      
+      var testResult = getId('testresults')
+      testResult.style.display = "block";
+      testResult.innerHTML = results
+  });
 }
 
-function read_settings_from_cookie() {
-  $('#tabsize').val(any(Cookies.get('tabsize'), '4'));
-  $('#brace-style').val(any(Cookies.get('brace-style'), 'collapse'));
-  $('#detect-packers').prop('checked', Cookies.get('detect-packers') === 'on');
-  $('#max-preserve-newlines').val(any(Cookies.get('max-preserve-newlines'), '5'));
-  $('#keep-array-indentation').prop('checked', Cookies.get('keep-array-indentation') === 'on');
-  $('#break-chained-methods').prop('checked', Cookies.get('break-chained-methods') === 'on');
-  $('#indent-scripts').val(any(Cookies.get('indent-scripts'), 'normal'));
-  $('#additional-options').val(any(Cookies.get('additional-options'), '{}'));
-  $('#space-before-conditional').prop('checked', Cookies.get('space-before-conditional') !== 'off');
-  $('#wrap-line-length').val(any(Cookies.get('wrap-line-length'), '0'));
-  $('#unescape-strings').prop('checked', Cookies.get('unescape-strings') === 'on');
-  $('#jslint-happy').prop('checked', Cookies.get('jslint-happy') === 'on');
-  $('#end-with-newline').prop('checked', Cookies.get('end-with-newline') === 'on');
-  $('#indent-inner-html').prop('checked', Cookies.get('indent-inner-html') === 'on');
-  $('#comma-first').prop('checked', Cookies.get('comma-first') === 'on');
-  $('#e4x').prop('checked', Cookies.get('e4x') === 'on');
-  $('#language').val(any(Cookies.get('language'), 'js'));
-  $('#indent-empty-lines').prop('checked', Cookies.get('indent-empty-lines') === 'on');
+export function read_settings_from_cookie() {
+  getId('tabsize').value = any(Cookies.get('tabsize'), '2');
+  getId('brace-style').value = any(Cookies.get('brace-style'), 'collapse');
+  getId('detect-packers').checked = Cookies.get('detect-packers') !== 'on';
+  getId('max-preserve-newlines').value = any(Cookies.get('max-preserve-newlines'), '5');
+  getId('keep-array-indentation').checked = Cookies.get('keep-array-indentation') === 'on';
+  getId('break-chained-methods').checked = Cookies.get('break-chained-methods') === 'on';
+  getId('indent-scripts').value = any(Cookies.get('indent-scripts'), 'normal');
+  getId('additional-options').value = any(Cookies.get('additional-options'), '{}');
+  getId('space-before-conditional').checked = Cookies.get('space-before-conditional') !== 'off';
+  getId('wrap-line-length').value = any(Cookies.get('wrap-line-length'), '0');
+  getId('unescape-strings').checked = Cookies.get('unescape-strings') === 'on';
+  getId('jslint-happy').checked = Cookies.get('jslint-happy') === 'on';
+  getId('end-with-newline').checked = Cookies.get('end-with-newline') === 'on';
+  getId('indent-inner-html').checked = Cookies.get('indent-inner-html') === 'on';
+  getId('comma-first').checked = Cookies.get('comma-first') === 'on';
+  getId('e4x').checked = Cookies.get('e4x') === 'on';
+  getId('language').value = any(Cookies.get('language'), 'js');
+  getId('indent-empty-lines').checked = Cookies.get('indent-empty-lines') === 'on';
+  
+  //getId('test-session').checked = Cookies.get('test-session') === 'off';
 }
 
 function store_settings_to_cookie() {
   var opts = {
     expires: 360
   };
-  Cookies.set('tabsize', $('#tabsize').val(), opts);
-  Cookies.set('brace-style', $('#brace-style').val(), opts);
-  Cookies.set('detect-packers', $('#detect-packers').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('max-preserve-newlines', $('#max-preserve-newlines').val(), opts);
-  Cookies.set('keep-array-indentation', $('#keep-array-indentation').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('break-chained-methods', $('#break-chained-methods').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('space-before-conditional', $('#space-before-conditional').prop('checked') ? 'on' : 'off',
+  Cookies.set('tabsize', getId('tabsize').value, opts);
+  Cookies.set('brace-style', getId('brace-style').value, opts);
+  Cookies.set('detect-packers', getId('detect-packers').checked ? 'on' : 'off', opts);
+  Cookies.set('max-preserve-newlines', getId('max-preserve-newlines').value, opts);
+  Cookies.set('keep-array-indentation', getId('keep-array-indentation').checked ? 'on' : 'off', opts);
+  Cookies.set('break-chained-methods', getId('break-chained-methods').checked ? 'on' : 'off', opts);
+  Cookies.set('space-before-conditional', getId('space-before-conditional').checked ? 'on' : 'off',
     opts);
-  Cookies.set('unescape-strings', $('#unescape-strings').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('jslint-happy', $('#jslint-happy').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('end-with-newline', $('#end-with-newline').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('wrap-line-length', $('#wrap-line-length').val(), opts);
-  Cookies.set('indent-scripts', $('#indent-scripts').val(), opts);
-  Cookies.set('additional-options', $('#additional-options').val(), opts);
-  Cookies.set('indent-inner-html', $('#indent-inner-html').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('comma-first', $('#comma-first').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('e4x', $('#e4x').prop('checked') ? 'on' : 'off', opts);
-  Cookies.set('language', $('#language').val(), opts);
-  Cookies.set('indent-empty-lines', $('#indent-empty-lines').prop('checked') ? 'on' : 'off', opts);
-
+  Cookies.set('unescape-strings', getId('unescape-strings').checked ? 'on' : 'off', opts);
+  Cookies.set('jslint-happy', getId('jslint-happy').checked ? 'on' : 'off', opts);
+  Cookies.set('end-with-newline', getId('end-with-newline').checked ? 'on' : 'off', opts);
+  Cookies.set('wrap-line-length', getId('wrap-line-length').value, opts);
+  Cookies.set('indent-scripts', getId('indent-scripts').value, opts);
+  Cookies.set('additional-options', getId('additional-options').value, opts);
+  Cookies.set('indent-inner-html', getId('indent-inner-html').checked ? 'on' : 'off', opts);
+  Cookies.set('comma-first', getId('comma-first').checked ? 'on' : 'off', opts);
+  Cookies.set('e4x', getId('e4x').checked ? 'on' : 'off', opts);
+  Cookies.set('language', getId('language').value, opts);
+  Cookies.set('indent-empty-lines', getId('indent-empty-lines').checked ? 'on' : 'off', opts);
+  
+  //Cookies.set('test-session', getId('test-session').checked ? 'on' : 'off', opts);
 }
 
 function unpacker_filter(source) {
@@ -151,11 +192,11 @@ function unpacker_filter(source) {
 }
 
 /* exported downloadBeautifiedCode */
-function downloadBeautifiedCode() {
-  var content = the.editor ? the.editor.getValue() : $('#source').val();
+export function downloadBeautifiedCode() {
+  var content = the.editor ? the.editor.getValue() : window.document.getElementById('source').value;
 
   // Getting the selected language to determine the file extension
-  var language = $('#language').val();
+  var language = window.document.getElementById('language').value;
   var fileExtension = "txt"; // Default extension
 
   // Setting the  file extension based on the selected language
@@ -184,8 +225,7 @@ function downloadBeautifiedCode() {
   }
 }
 
-
-function beautify() {
+export function beautify() {
   if (the.beautify_in_progress) {
     return;
   }
@@ -194,55 +234,63 @@ function beautify() {
 
   the.beautify_in_progress = true;
 
-  var source = the.editor ? the.editor.getValue() : $('#source').val(),
+  var source = the.editor ? the.editor.getValue() : getId('source').value,
     output,
     opts = {};
   the.lastInput = source;
 
-  var additional_options = $('#additional-options').val();
+  var additional_options = getId('additional-options').value;
 
-  var language = $('#language').val();
-  the.language = $('#language option:selected').text();
+  var language = getId('language').value;
+  var theLanguage = getId('language');
+  var options = theLanguage.getElementsByTagName("optons")
+  for(var i = 0; i <options.length;i++) {
+    if(options[i].selected === true) {
+      the.language = options[i].textContent;
+    }
+  }
 
-  opts.indent_size = $('#tabsize').val();
+  opts.indent_size = getId('tabsize').value;
   opts.indent_char = parseInt(opts.indent_size, 10) === 1 ? '\t' : ' ';
-  opts.max_preserve_newlines = $('#max-preserve-newlines').val();
+  opts.max_preserve_newlines = getId('max-preserve-newlines').value;
   opts.preserve_newlines = opts.max_preserve_newlines !== "-1";
-  opts.keep_array_indentation = $('#keep-array-indentation').prop('checked');
-  opts.break_chained_methods = $('#break-chained-methods').prop('checked');
-  opts.indent_scripts = $('#indent-scripts').val();
-  opts.brace_style = $('#brace-style').val() + ($('#brace-preserve-inline').prop('checked') ? ",preserve-inline" : "");
-  opts.space_before_conditional = $('#space-before-conditional').prop('checked');
-  opts.unescape_strings = $('#unescape-strings').prop('checked');
-  opts.jslint_happy = $('#jslint-happy').prop('checked');
-  opts.end_with_newline = $('#end-with-newline').prop('checked');
-  opts.wrap_line_length = $('#wrap-line-length').val();
-  opts.indent_inner_html = $('#indent-inner-html').prop('checked');
-  opts.comma_first = $('#comma-first').prop('checked');
-  opts.e4x = $('#e4x').prop('checked');
-  opts.indent_empty_lines = $('#indent-empty-lines').prop('checked');
-
-  $('#additional-options-error').hide();
-  $('#open-issue').hide();
-
+  opts.keep_array_indentation = getId('keep-array-indentation').checked;
+  opts.break_chained_methods = getId('break-chained-methods').checked;
+  opts.indent_scripts = getId('indent-scripts').value;
+  opts.brace_style = getId('brace-style').value + (getId('brace-preserve-inline').checked ? ",preserve-inline" : "");
+  opts.space_before_conditional = getId('space-before-conditional').checked;
+  opts.unescape_strings = getId('unescape-strings').checked;
+  opts.jslint_happy = getId('jslint-happy').checked;
+  opts.end_with_newline = getId('end-with-newline').checked;
+  opts.wrap_line_length = getId('wrap-line-length').value;
+  opts.indent_inner_html = getId('indent-inner-html').checked;
+  opts.comma_first = getId('comma-first').checked;
+  opts.e4x = getId('e4x').checked;
+  opts.indent_empty_lines = getId('indent-empty-lines').checked;
+  getId('additional-options-error').style.display = "none";
+  getId('open-issue').style.display = "none";
+  
+  //opts.test_session = getId('test-session').checked
+  
   if (additional_options && additional_options !== '{}') {
     try {
       additional_options = JSON.parse(additional_options);
       opts = mergeObjects(opts, additional_options);
     } catch (e) {
-      $('#additional-options-error').show();
+      getId('additional-options-error').style.dispay = "";
     }
   }
 
   var selectedOptions = JSON.stringify(opts, null, 2);
-  $('#options-selected').val(selectedOptions);
+  
+  getId('options-selected').value = selectedOptions;
 
   if (language === 'html') {
     output = the.beautifier.html(source, opts);
   } else if (language === 'css') {
     output = the.beautifier.css(source, opts);
   } else {
-    if ($('#detect-packers').prop('checked')) {
+    if (getId('detect-packers').checked===true) {
       source = unpacker_filter(source);
     }
     output = the.beautifier.js(source, opts);
@@ -251,13 +299,13 @@ function beautify() {
   if (the.editor) {
     the.editor.setValue(output);
   } else {
-    $('#source').val(output);
+    getId('source').value = output;
   }
 
   the.lastOutput = output;
   the.lastOpts = selectedOptions;
 
-  $('#open-issue').show();
+  getId('open-issue').style.dispay = "";
   set_editor_mode();
 
   the.beautify_in_progress = false;
@@ -289,7 +337,7 @@ function submitIssue() {
     ];
 
     if (!confirm(confirmText.join('\n'))) {
-      $('#open-issue').hide();
+      getId('open-issue').style.displey = "none";
       return;
     }
     encoded = encodeURIComponent(getSubmitIssueBody(true)).replace(/%20/g, "+");
@@ -350,21 +398,24 @@ function getSubmitIssueBody(trucate) {
   return submit_body.join('\n');
 }
 
+
 function copyText() {
   if (the.editor) {
     the.editor.execCommand('selectAll');
     var currentText = the.editor.getValue();
-    var copyArea = $('<textarea />')
-      .text(currentText)
-      .attr('readonly', '')
-      .css({ 'position': 'absolute', 'left': '-9999px' });
+    var copyArea = document.createElement('textarea')
+    copyArea.setAttribute('readonly','')
+    copyArea.style = "position:absolute;left:-9999px"
+    copyArea.textContent = currentText
+    document.body.appendChild(copyArea);
 
-    $('body').append(copyArea);
     copyArea.select();
     document.execCommand('copy');
+    console.log('copy')
     copyArea.remove();
   } else {
-    $('#source').select();
+    getId('source').focus();
+    getId('source').select();
     document.execCommand('copy');
   }
 }
@@ -373,7 +424,8 @@ function selectAll() {
   if (the.editor) {
     the.editor.execCommand('selectAll');
   } else {
-    $('#source').select();
+    getId('source').focus();
+    getId('source').select();
   }
 }
 
@@ -381,7 +433,7 @@ function clearAll() {
   if (the.editor) {
     the.editor.setValue('');
   } else {
-    $('#source').val('');
+    getId('source').value = '';
   }
 }
 
@@ -394,32 +446,60 @@ function changeToFileContent(input) {
       if (the.editor) {
         the.editor.setValue(event.target.result);
       } else {
-        $('#source').val(event.target.result);
+        getId('source').value = event.target.result;
       }
     };
   }
 }
 
-function setPreferredColorScheme() {
-  var themeToggleBtn = document.querySelector('#theme-toggle-btn');
+export function setPreferredColorScheme() {
+  //var themeToggleBtn = document.querySelector('#theme-toggle-btn');
+  var themeToggleBtn = document.getElementById('theme-toggle-btn');
   themeToggleBtn.addEventListener('change', switchTheme, false);
   var isPreferredColorSchemeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   if (isPreferredColorSchemeDark) {
     themeToggleBtn.checked = true;
-    $('.CodeMirror').addClass('cm-s-darcula');
-    $('body').addClass('dark-mode');
-    $('.logo').children('img').attr("src", "web/banner-dark.svg");
+    for(var cm of document.getElementsByClassName('CodeMirror')) {
+      cm.classList.add('cm-s-darcula')
+    }
+    window.document.body.classList.add('dark-mode')
+    for(var logo of window.document.getElementsByClassName('logo')) {
+      for(var img of logo.getElementsByTagName('img')) {
+         img.setAttribute("src", "web/banner-dark.svg")
+      }
+    }
   }
 }
 
 function switchTheme(themeToggleEvent) {
   if (themeToggleEvent.target.checked) {
-    $('.CodeMirror').addClass('cm-s-darcula');
-    $('body').addClass('dark-mode');
-    $('.logo').children('img').attr("src", "web/banner-dark.svg");
+    for(var cm of document.getElementsByClassName('CodeMirror')) {
+      cm.classList.add('cm-s-darcula')
+    }
+    window.document.body.classList.add('dark-mode')
+    for(var logo of document.getElementsByClassName('logo')) {
+      for(var img of logo.getElementsByTagName('img')) {
+         img.setAttribute("src", "web/banner-dark.svg")
+      }
+    }
   } else {
-    $('.CodeMirror').removeClass('cm-s-darcula');
-    $('body').removeClass('dark-mode');
-    $('.logo').children('img').attr("src", "web/banner-light.svg");
+    for(var cm of document.getElementsByClassName('CodeMirror')) {
+      cm.classList.remove('cm-s-darcula')
+    }
+    window.document.body.classList.remove('dark-mode')
+    for(var logo of document.getElementsByClassName('logo')) {
+      for(var img of logo.getElementsByTagName('img')) {
+         img.setAttribute("src", "web/banner-light.svg")
+      }
+    }
   }
 }
+
+globalThis.run_tests = run_tests
+globalThis.read_settings_from_cookie = read_settings_from_cookie
+globalThis.submitIssue = submitIssue
+globalThis.copyText = copyText
+globalThis.downloadBeautifiedCode = downloadBeautifiedCode
+globalThis.selectAll = selectAll
+globalThis.clearAll = clearAll
+globalThis.changeToFileContent = changeToFileContent
