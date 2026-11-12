@@ -68,9 +68,9 @@ var MyObfuscate = {
 
   unpack: function(str) {
     if (MyObfuscate.detect(str)) {
-      var __eval = eval;
+      var __eval = window.eval;
       try {
-        eval = function(unpacked) { // jshint ignore:line
+        window.eval = function(unpacked) { // jshint ignore:line
           if (MyObfuscate.starts_with(unpacked, 'var _escape')) {
             // fetch the urlencoded stuff from the script,
             var matches = /'([^']*)'/.exec(unpacked);
@@ -96,7 +96,7 @@ var MyObfuscate = {
           str = e;
         }
       }
-      eval = __eval; // jshint ignore:line
+      window.eval = __eval; // jshint ignore:line
     }
     return str;
   },
