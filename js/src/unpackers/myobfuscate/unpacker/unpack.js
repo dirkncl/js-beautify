@@ -4,10 +4,9 @@ import { ends_with } from './ends_with.js'
 
 export function unpack(str) {
   if (detect(str)) {
-    var evals = eval
-    var __eval = eval;
+    var __eval = window.eval;
     try {
-      evals = function(unpacked) { // jshint ignore:line
+      window.eval = function(unpacked) { // jshint ignore:line
         if (starts_with(unpacked, 'var _escape')) {
           // fetch the urlencoded stuff from the script,
           var matches = /'([^']*)'/.exec(unpacked);
@@ -33,7 +32,7 @@ export function unpack(str) {
         str = e;
       }
     }
-    evals = __eval; // jshint ignore:line
+    window.eval = __eval; // jshint ignore:line
   }
   return str;
 }
